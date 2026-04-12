@@ -10,22 +10,22 @@ import (
 	"github.com/pardnchiu/go-utils/filesystem"
 )
 
-func Set(service, fallbackPath, key, value string) error {
+func Set(key, value string) error {
 	if value == "" {
 		return nil
 	}
 	switch runtime.GOOS {
 	case "darwin":
-		return setSecretOnMac(service, key, value)
+		return setSecretOnMac(key, value)
 	default:
-		if ok := setSecret(service, key, value); ok == nil {
+		if ok := setSecret(key, value); ok == nil {
 			return nil
 		}
-		return setFallback(fallbackPath, key, value)
+		return setFallback(key, value)
 	}
 }
 
-func setSecretOnMac(service, key, value string) error {
+func setSecretOnMac(key, value string) error {
 	exec.Command("security", "delete-generic-password",
 		"-s", service,
 		"-a", key).Run()
@@ -40,7 +40,7 @@ func setSecretOnMac(service, key, value string) error {
 	return nil
 }
 
-func setSecret(service, key, value string) error {
+func setSecret(key, value string) error {
 	cmd := exec.Command("secret-tool", "store",
 		"--label", service+"/"+key,
 		"service", service, "account", key)
@@ -51,9 +51,9 @@ func setSecret(service, key, value string) error {
 	return nil
 }
 
-func setFallback(fallbackPath, key, value string) error {
+func setFallback(key, value string) error {
 	path := filepath.Join(fallbackPath, ".secrets")
-	lines := readFallbackLines(fallbackPath)
+	lines := readFallbackLines()
 	prefix := key + "="
 	found := false
 	for i, l := range lines {

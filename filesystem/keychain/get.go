@@ -8,26 +8,26 @@ import (
 	"strings"
 )
 
-func Get(service, fallbackPath, key string) string {
-	if val := readKeychain(service, fallbackPath, key); val != "" {
+func Get(key string) string {
+	if val := readKeychain(key); val != "" {
 		return val
 	}
 	return os.Getenv(key)
 }
 
-func readKeychain(service, fallbackPath, key string) string {
+func readKeychain(key string) string {
 	switch runtime.GOOS {
 	case "darwin":
-		return getSecretFromMac(service, key)
+		return getSecretFromMac(key)
 	default:
-		if secret := getSecret(service, key); secret != "" {
+		if secret := getSecret(key); secret != "" {
 			return secret
 		}
-		return getFallback(fallbackPath, key)
+		return getFallback(key)
 	}
 }
 
-func getSecretFromMac(service, key string) string {
+func getSecretFromMac(key string) string {
 	out, err := exec.Command("security", "find-generic-password",
 		"-s", service,
 		"-a", key,
@@ -38,7 +38,7 @@ func getSecretFromMac(service, key string) string {
 	return strings.TrimSpace(string(out))
 }
 
-func getSecret(service, key string) string {
+func getSecret(key string) string {
 	out, err := exec.Command("secret-tool", "lookup",
 		"service", service, "account", key).Output()
 	if err != nil {
@@ -47,9 +47,9 @@ func getSecret(service, key string) string {
 	return strings.TrimSpace(string(out))
 }
 
-func getFallback(fallbackPath, key string) string {
+func getFallback(key string) string {
 	prefix := key + "="
-	for _, l := range readFallbackLines(fallbackPath) {
+	for _, l := range readFallbackLines() {
 		if v, ok := strings.CutPrefix(l, prefix); ok {
 			return v
 		}
@@ -57,7 +57,7 @@ func getFallback(fallbackPath, key string) string {
 	return ""
 }
 
-func readFallbackLines(fallbackPath string) []string {
+func readFallbackLines() []string {
 	path := filepath.Join(fallbackPath, ".secrets")
 	data, err := os.ReadFile(path)
 	if err != nil {

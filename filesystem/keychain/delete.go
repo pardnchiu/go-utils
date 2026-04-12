@@ -9,7 +9,7 @@ import (
 	"github.com/pardnchiu/go-utils/filesystem"
 )
 
-func Delete(service, fallbackPath, key string) error {
+func Delete(key string) error {
 	switch runtime.GOOS {
 	case "darwin":
 		exec.Command("security", "delete-generic-password",
@@ -18,14 +18,14 @@ func Delete(service, fallbackPath, key string) error {
 	default:
 		exec.Command("secret-tool", "clear",
 			"service", service, "account", key).Run()
-		deleteFallback(fallbackPath, key)
+		deleteFallback(key)
 	}
 	return nil
 }
 
-func deleteFallback(fallbackPath, key string) {
+func deleteFallback(key string) {
 	path := filepath.Join(fallbackPath, ".secrets")
-	lines := readFallbackLines(fallbackPath)
+	lines := readFallbackLines()
 	prefix := key + "="
 	filtered := lines[:0]
 	for _, l := range lines {
