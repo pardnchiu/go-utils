@@ -19,6 +19,15 @@ data, status, err := http.POST[MyStruct](ctx, nil, "https://api.example.com/data
 
 // POST（Form）
 data, status, err := http.POST[MyStruct](ctx, nil, "https://api.example.com/data", nil, body, "form")
+
+// PUT
+data, status, err := http.PUT[MyStruct](ctx, nil, "https://api.example.com/data", nil, body, "json")
+
+// PATCH
+data, status, err := http.PATCH[MyStruct](ctx, nil, "https://api.example.com/data", nil, body, "json")
+
+// DELETE
+data, status, err := http.DELETE[MyStruct](ctx, nil, "https://api.example.com/data", nil, body, "json")
 ```
 
 ### filesystem

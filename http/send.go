@@ -11,6 +11,22 @@ import (
 )
 
 func POST[T any](ctx context.Context, client *http.Client, api string, header map[string]string, body map[string]any, contentType string) (T, int, error) {
+	return send[T](ctx, client, "POST", api, header, body, contentType)
+}
+
+func PUT[T any](ctx context.Context, client *http.Client, api string, header map[string]string, body map[string]any, contentType string) (T, int, error) {
+	return send[T](ctx, client, "PUT", api, header, body, contentType)
+}
+
+func PATCH[T any](ctx context.Context, client *http.Client, api string, header map[string]string, body map[string]any, contentType string) (T, int, error) {
+	return send[T](ctx, client, "PATCH", api, header, body, contentType)
+}
+
+func DELETE[T any](ctx context.Context, client *http.Client, api string, header map[string]string, body map[string]any, contentType string) (T, int, error) {
+	return send[T](ctx, client, "DELETE", api, header, body, contentType)
+}
+
+func send[T any](ctx context.Context, client *http.Client, method, api string, header map[string]string, body map[string]any, contentType string) (T, int, error) {
 	var result T
 
 	if contentType == "" {
@@ -25,7 +41,7 @@ func POST[T any](ctx context.Context, client *http.Client, api string, header ma
 			requestBody.Set(k, fmt.Sprint(v))
 		}
 
-		req, err = http.NewRequestWithContext(ctx, "POST", api, strings.NewReader(requestBody.Encode()))
+		req, err = http.NewRequestWithContext(ctx, method, api, strings.NewReader(requestBody.Encode()))
 		if err != nil {
 			return result, 0, err
 		}
@@ -36,7 +52,7 @@ func POST[T any](ctx context.Context, client *http.Client, api string, header ma
 			return result, 0, fmt.Errorf("failed to marshal body: %w", err)
 		}
 
-		req, err = http.NewRequestWithContext(ctx, "POST", api, strings.NewReader(string(requestBody)))
+		req, err = http.NewRequestWithContext(ctx, method, api, strings.NewReader(string(requestBody)))
 		if err != nil {
 			return result, 0, fmt.Errorf("failed to create request: %w", err)
 		}
