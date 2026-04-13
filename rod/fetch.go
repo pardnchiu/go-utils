@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/proto"
 	readability "github.com/go-shiori/go-readability"
 )
@@ -61,7 +62,46 @@ func Fetch(ctx context.Context, href string, opt *FetchOption) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	return fetchWithBrowser(ctx, b, href, parsed, timeout, idle, maxLen, opt.Output)
+}
 
+func FetchWS(ctx context.Context, controlURL, href string, opt *FetchOption) (string, error) {
+	if opt == nil {
+		opt = &FetchOption{}
+	}
+	timeout := opt.Timeout
+	if timeout == 0 {
+		timeout = defaultTimeout
+	}
+	idle := opt.IdleWait
+	if idle == 0 {
+		idle = defaultIdleWait
+	}
+	maxLen := opt.MaxLength
+	if maxLen == 0 {
+		maxLen = defaultMaxLength
+	}
+
+	parsed, err := url.Parse(href)
+	if err != nil {
+		return "", fmt.Errorf("url.Parse: %w", err)
+	}
+	if parsed.Scheme == "" || !strings.Contains(parsed.Hostname(), ".") {
+		return "", fmt.Errorf("invalid url: %s", href)
+	}
+
+	b, err := ensureBrowserWS(controlURL)
+	if err != nil {
+		return "", err
+	}
+	text, err := fetchWithBrowser(ctx, b, href, parsed, timeout, idle, maxLen, opt.Output)
+	if err != nil && strings.Contains(err.Error(), "browser.Page") {
+		resetBrowserWS(controlURL)
+	}
+	return text, err
+}
+
+func fetchWithBrowser(ctx context.Context, b *rod.Browser, href string, parsed *url.URL, timeout, idle time.Duration, maxLen int, output Output) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
@@ -91,7 +131,7 @@ func Fetch(ctx context.Context, href string, opt *FetchOption) (string, error) {
 	}
 
 	var text string
-	switch opt.Output {
+	switch output {
 	case OutputText:
 		text = strings.TrimSpace(article.TextContent)
 	default:

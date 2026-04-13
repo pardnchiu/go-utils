@@ -14,8 +14,9 @@ import (
 const DefaultUserAgent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 
 var (
-	mu      sync.Mutex
-	browser *rod.Browser
+	mu         sync.Mutex
+	browser    *rod.Browser
+	wsBrowsers = map[string]*rod.Browser{}
 )
 
 func ensureBrowser(userAgent string) (*rod.Browser, error) {
@@ -54,12 +55,38 @@ func ensureBrowser(userAgent string) (*rod.Browser, error) {
 	return b, nil
 }
 
+func ensureBrowserWS(controlURL string) (*rod.Browser, error) {
+	if controlURL == "" {
+		return nil, fmt.Errorf("empty control url")
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if b, ok := wsBrowsers[controlURL]; ok {
+		return b, nil
+	}
+	b := rod.New().ControlURL(controlURL)
+	if err := b.Connect(); err != nil {
+		return nil, fmt.Errorf("browser.Connect: %w", err)
+	}
+	wsBrowsers[controlURL] = b
+	return b, nil
+}
+
+func resetBrowserWS(controlURL string) {
+	mu.Lock()
+	defer mu.Unlock()
+	delete(wsBrowsers, controlURL)
+}
+
 func Close() {
 	mu.Lock()
 	defer mu.Unlock()
 	if browser != nil {
 		_ = browser.Close()
 		browser = nil
+	}
+	for url := range wsBrowsers {
+		delete(wsBrowsers, url)
 	}
 }
 

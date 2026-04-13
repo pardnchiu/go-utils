@@ -52,7 +52,7 @@ err := database.PostgresqlMigrate(ctx, db, "./migrations")
 
 ### rod
 
-go-rod 打包：headless Chromium 抓取網頁，以 readability 擷取主文，輸出 Markdown 或純文字。內含 HTML→Markdown 轉換與跨平台 Chrome 偵測。
+go-rod 打包：headless Chromium 抓取網頁，以 readability 擷取主文，輸出 Markdown 或純文字。內含 HTML→Markdown 轉換與跨平台 Chrome 偵測。另支援透過 `FetchWS` 連接既有 Chrome 的 remote debugging WebSocket（`--remote-debugging-port`），用於沿用使用者登入 session 的場景。
 
 ```go
 import "github.com/pardnchiu/go-utils/rod"
@@ -60,6 +60,23 @@ import "github.com/pardnchiu/go-utils/rod"
 defer rod.Close()
 
 md, err := rod.Fetch(ctx, "https://example.com/article", nil)
+
+// 連接既有 Chrome（需以 --remote-debugging-port=9222 啟動，見下方）
+md, err = rod.FetchWS(ctx, "http://127.0.0.1:9222", "https://example.com/article", nil)
+```
+
+**以 remote debugging 啟動 Chrome**
+
+```bash
+# macOS
+"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+  --remote-debugging-port=9222 \
+  --user-data-dir="$HOME/.chrome-debug"
+
+# Linux
+google-chrome \
+  --remote-debugging-port=9222 \
+  --user-data-dir="$HOME/.chrome-debug" &
 
 text, err := rod.Fetch(ctx, "https://example.com/article", &rod.FetchOption{
 	Output:    rod.OutputText,
