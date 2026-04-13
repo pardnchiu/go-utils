@@ -50,6 +50,27 @@ defer db.Close()
 err := database.PostgresqlMigrate(ctx, db, "./migrations")
 ```
 
+### rod
+
+go-rod 打包：headless Chromium 抓取網頁，以 readability 擷取主文，輸出 Markdown 或純文字。內含 HTML→Markdown 轉換與跨平台 Chrome 偵測。
+
+```go
+import "github.com/pardnchiu/go-utils/rod"
+
+defer rod.Close()
+
+md, err := rod.Fetch(ctx, "https://example.com/article", nil)
+
+text, err := rod.Fetch(ctx, "https://example.com/article", &rod.FetchOption{
+	Output:    rod.OutputText,
+	Timeout:   20 * time.Second,
+	MaxLength: 50 << 10,
+})
+
+// 單獨使用 HTML→Markdown
+out, err := rod.HTMLToMarkdown(htmlFragment, baseURL)
+```
+
 ### filesystem
 
 原子化檔案寫入（自動建立目錄、先寫 `.tmp` 再 rename）。
