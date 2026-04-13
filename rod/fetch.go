@@ -105,6 +105,12 @@ func fetchWithBrowser(ctx context.Context, b *rod.Browser, href string, parsed *
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
+	release, err := acquireSem(ctx)
+	if err != nil {
+		return "", fmt.Errorf("acquireSem: %w", err)
+	}
+	defer release()
+
 	page, err := b.Page(proto.TargetCreateTarget{URL: "about:blank"})
 	if err != nil {
 		return "", fmt.Errorf("browser.Page: %w", err)

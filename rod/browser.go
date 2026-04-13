@@ -1,6 +1,7 @@
 package rod
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -17,7 +18,32 @@ var (
 	mu         sync.Mutex
 	browser    *rod.Browser
 	wsBrowsers = map[string]*rod.Browser{}
+	fetchSem   = make(chan struct{}, 8)
 )
+
+func SetMaxConcurrency(n int) {
+	if n <= 0 {
+		return
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+
+	fetchSem = make(chan struct{}, n)
+}
+
+func acquireSem(ctx context.Context) (func(), error) {
+	mu.Lock()
+	sem := fetchSem
+	mu.Unlock()
+
+	select {
+	case sem <- struct{}{}:
+		return func() { <-sem }, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+}
 
 func ensureBrowser(userAgent string) (*rod.Browser, error) {
 	mu.Lock()

@@ -52,7 +52,7 @@ err := database.PostgresqlMigrate(ctx, db, "./migrations")
 
 ### rod
 
-go-rod 打包：headless Chromium 抓取網頁，以 readability 擷取主文，輸出 Markdown 或純文字。內含 HTML→Markdown 轉換與跨平台 Chrome 偵測。另支援透過 `FetchWS` 連接既有 Chrome 的 remote debugging WebSocket（`--remote-debugging-port`），用於沿用使用者登入 session 的場景。
+go-rod 打包：headless Chromium 抓取網頁，以 readability 擷取主文，輸出 Markdown 或純文字。內含 HTML→Markdown 轉換與跨平台 Chrome 偵測。另支援透過 `FetchWS` 連接既有 Chrome 的 remote debugging WebSocket（`--remote-debugging-port`），用於沿用使用者登入 session 的場景。`Fetch` / `FetchWS` 可併發呼叫，共用單一 browser 並各自開獨立 tab；全域併發上限預設 8，可透過 `SetMaxConcurrency(n)` 調整。
 
 ```go
 import "github.com/pardnchiu/go-utils/rod"
