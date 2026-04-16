@@ -8,6 +8,9 @@
 
 泛型 HTTP GET/POST/PUT/PATCH/DELETE，自動處理 JSON/XML 解碼。
 
+<details>
+<summary>範例</summary>
+
 ```go
 import "github.com/pardnchiu/go-utils/http"
 
@@ -30,6 +33,8 @@ data, status, err := http.PATCH[MyStruct](ctx, nil, "https://api.example.com/dat
 data, status, err := http.DELETE[MyStruct](ctx, nil, "https://api.example.com/data", nil, body, "json")
 ```
 
+</details>
+
 ### database
 
 PostgreSQL 連線建構與 migration runner。
@@ -37,6 +42,9 @@ PostgreSQL 連線建構與 migration runner。
 `NewPostgresql` 從環境變數讀取預設值（`PG_DSN` / `PG_HOST` / `PG_PORT` / `PG_USER` / `PG_PASSWORD` / `PG_DATABASE` / `PG_SSLMODE`），`cfg` 非零欄位覆寫之。
 
 `PostgresqlMigrate` 遞迴掃描 `dir` 下所有 `.sql` 檔，以相對路徑為版本鍵排序執行，透過 `schema_migrations` 表確保冪等，每筆 migration 以 transaction 包裹。
+
+<details>
+<summary>範例</summary>
 
 ```go
 import (
@@ -50,6 +58,8 @@ defer db.Close()
 err := database.PostgresqlMigrate(ctx, db, "./migrations")
 ```
 
+</details>
+
 ### rod
 
 go-rod 打包：Chromium 抓取網頁，以 readability 擷取主文，輸出 `*FetchResult`（含 `Href` 原始網址 / `FinalURL` 轉址後最終網址 / `Markdown` / `Title` / `Author` / `PublishedAt` / `Excerpt` / `Status`）。內含 HTML→Markdown 轉換與跨平台 Chrome 偵測。另支援透過 `FetchWS` 連接既有 Chrome 的 remote debugging WebSocket（`--remote-debugging-port`），用於沿用使用者登入 session 的場景。`Fetch` / `FetchWS` 可併發呼叫，共用單一 browser 並各自開獨立 tab；全域併發上限預設 8，可透過 `SetMaxConcurrency(n)` 調整。
@@ -59,6 +69,9 @@ go-rod 打包：Chromium 抓取網頁，以 readability 擷取主文，輸出 `*
 `Fetch` 依環境自動選模式：有 display 時使用 headful（視窗以 off-screen position 隱藏），無 display 時使用 headless。Browser instance 常駐複用，閒置 5 分鐘自動關閉釋放資源。`FetchWS` 行為不變。
 
 遇到 HTTP 錯誤、空內容、challenge page（Cloudflare 等）時，error 為 `*FetchError{Status, Href}`，`Status` 可能為 4xx/5xx、`204`（空內容）或 `403`（challenge / URL heuristic），可用 `errors.As` 分流。
+
+<details>
+<summary>範例</summary>
 
 ```go
 import "github.com/pardnchiu/go-utils/rod"
@@ -104,9 +117,14 @@ if errors.As(err, &fe) {
 out, err := rod.HTMLToMarkdown(htmlFragment, baseURL, true) // keepLinks=true
 ```
 
+</details>
+
 ### filesystem
 
 原子化檔案寫入（自動建立目錄、先寫 `.tmp` 再 rename）。
+
+<details>
+<summary>範例</summary>
 
 ```go
 import "github.com/pardnchiu/go-utils/filesystem"
@@ -114,9 +132,14 @@ import "github.com/pardnchiu/go-utils/filesystem"
 err := filesystem.WriteFile("/path/to/file.txt", "content", 0644)
 ```
 
+</details>
+
 ### filesystem/keychain
 
 跨平台密鑰存取（macOS Keychain / Linux secret-tool / 檔案 fallback）。
+
+<details>
+<summary>範例</summary>
 
 ```go
 import "github.com/pardnchiu/go-utils/filesystem/keychain"
@@ -128,3 +151,5 @@ val := keychain.Get("API_KEY")
 err := keychain.Set("API_KEY", "secret")
 err := keychain.Delete("API_KEY")
 ```
+
+</details>
