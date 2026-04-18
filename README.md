@@ -134,6 +134,25 @@ err := filesystem.WriteFile("/path/to/file.txt", "content", 0644)
 
 </details>
 
+### utils
+
+通用小工具。`UUID()` 產生 RFC 4122 v4 UUID。`GetWithDefault` / `GetWithDefaultInt` / `GetWithDefaultFloat` 讀取環境變數並於未設定、空字串或解析失敗時回傳預設值。
+
+<details>
+<summary>範例</summary>
+
+```go
+import "github.com/pardnchiu/go-utils/utils"
+
+id := utils.UUID() // e.g. "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+
+host := utils.GetWithDefault("HOST", "localhost")
+port := utils.GetWithDefaultInt("PORT", 8080)
+ratio := utils.GetWithDefaultFloat("RATIO", 1.5)
+```
+
+</details>
+
 ### filesystem/keychain
 
 跨平台密鑰存取（macOS Keychain / Linux secret-tool / 檔案 fallback）。
