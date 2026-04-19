@@ -3,10 +3,12 @@
 package sandbox
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"os"
 	"os/exec"
+	"strings"
 	"sync"
 )
 
@@ -82,7 +84,103 @@ func checkBwrap() {
 	}
 }
 
-func Wrap(binary string, args []string, workDir string) (string, []string, error) {
+func buildBwrapArgs(homeDir, workDir string, opt *Option) []string {
+	var args []string
+
+	if opt.MinimalBinds != nil {
+		for _, p := range minimalRoBinds {
+			args = append(args, "--ro-bind-try", p, p)
+		}
+		for _, p := range opt.MinimalBinds.ReadOnly {
+			args = append(args, "--ro-bind-try", p, p)
+		}
+		writeRoot := workDir
+		if opt.MinimalBinds.WriteScope == WriteHome {
+			writeRoot = homeDir
+		}
+		args = append(args, "--bind", writeRoot, writeRoot)
+		for _, p := range opt.MinimalBinds.ReadWrite {
+			args = append(args, "--bind", p, p)
+		}
+	} else {
+		args = append(args,
+			"--ro-bind", "/", "/",
+			"--bind", homeDir, homeDir,
+		)
+	}
+
+	args = append(args,
+		"--tmpfs", "/tmp",
+		"--dev", "/dev",
+		"--proc", "/proc",
+		"--new-session",
+		"--die-with-parent",
+	)
+
+	if opt.Network == NetworkDeny {
+		args = append(args, "--unshare-net")
+	} else {
+		args = append(args, "--share-net")
+	}
+	args = append(args, unshareFlags...)
+
+	if opt.DropCaps {
+		args = append(args, "--cap-drop", "ALL")
+	}
+
+	deniedDirs, deniedFiles := deniedPaths(homeDir)
+	if opt.MinimalBinds != nil {
+		writeRoot := workDir
+		if opt.MinimalBinds.WriteScope == WriteHome {
+			writeRoot = homeDir
+		}
+		roots := append([]string{writeRoot}, opt.MinimalBinds.ReadWrite...)
+		isVisible := func(p string) bool {
+			for _, r := range roots {
+				if p == r || strings.HasPrefix(p, r+"/") {
+					return true
+				}
+			}
+			return false
+		}
+		deniedDirs = filterVisible(deniedDirs, isVisible)
+		deniedFiles = filterVisible(deniedFiles, isVisible)
+	}
+	for _, d := range deniedDirs {
+		args = append(args, "--tmpfs", d)
+	}
+	for _, f := range deniedFiles {
+		args = append(args, "--ro-bind", "/dev/null", f)
+	}
+	return args
+}
+
+func filterVisible(paths []string, keep func(string) bool) []string {
+	var out []string
+	for _, p := range paths {
+		if keep(p) {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+func Wrap(ctx context.Context, binary string, args []string, workDir string, opt *Option) (*exec.Cmd, error) {
+	if ctx == nil {
+		return nil, fmt.Errorf("ctx is nil")
+	}
+	if opt == nil {
+		opt = &Option{}
+	}
+	if opt.CPUPercent < 0 || opt.MemoryMB < 0 {
+		return nil, fmt.Errorf("negative limit: cpu=%d mem=%d", opt.CPUPercent, opt.MemoryMB)
+	}
+
+	homeDir, absWorkDir, err := validateDir(workDir)
+	if err != nil {
+		return nil, err
+	}
+
 	bwrapOnce.Do(func() {
 		checkBwrap()
 		if !isAvailable {
@@ -91,35 +189,36 @@ func Wrap(binary string, args []string, workDir string) (string, []string, error
 	})
 
 	if !isAvailable {
-		return binary, args, nil
+		cmd := exec.CommandContext(ctx, binary, args...)
+		cmd.Dir = absWorkDir
+		return cmd, nil
 	}
 
-	homeDir, err := vaildateDir(workDir)
-	if err != nil {
-		return "", nil, err
-	}
-
-	bwrapArgs := []string{
-		"--ro-bind", "/", "/",
-		"--bind", homeDir, homeDir,
-		"--tmpfs", "/tmp",
-		"--dev", "/dev",
-		"--proc", "/proc",
-		"--share-net",
-		"--new-session",
-		"--die-with-parent",
-	}
-	bwrapArgs = append(bwrapArgs, unshareFlags...)
-
-	deniedDirs, deniedFiles := deniedPaths(homeDir)
-	for _, d := range deniedDirs {
-		bwrapArgs = append(bwrapArgs, "--tmpfs", d)
-	}
-	for _, f := range deniedFiles {
-		bwrapArgs = append(bwrapArgs, "--ro-bind", "/dev/null", f)
-	}
-
+	bwrapArgs := buildBwrapArgs(homeDir, absWorkDir, opt)
 	bwrapArgs = append(bwrapArgs, "--", binary)
+	bwrapArgs = append(bwrapArgs, args...)
 
-	return "bwrap", append(bwrapArgs, args...), nil
+	if opt.CPUPercent == 0 && opt.MemoryMB == 0 {
+		cmd := exec.CommandContext(ctx, "bwrap", bwrapArgs...)
+		cmd.Dir = absWorkDir
+		return cmd, nil
+	}
+
+	if !checkBinary("systemd-run") {
+		return nil, fmt.Errorf("systemd-run required for CPU/Memory limits (needs a running user systemd session)")
+	}
+
+	sdArgs := []string{"--user", "--scope", "--collect"}
+	if opt.MemoryMB > 0 {
+		sdArgs = append(sdArgs, fmt.Sprintf("--property=MemoryMax=%dM", opt.MemoryMB))
+	}
+	if opt.CPUPercent > 0 {
+		sdArgs = append(sdArgs, fmt.Sprintf("--property=CPUQuota=%d%%", opt.CPUPercent))
+	}
+	sdArgs = append(sdArgs, "bwrap")
+	sdArgs = append(sdArgs, bwrapArgs...)
+
+	cmd := exec.CommandContext(ctx, "systemd-run", sdArgs...)
+	cmd.Dir = absWorkDir
+	return cmd, nil
 }

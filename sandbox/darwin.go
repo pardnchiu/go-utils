@@ -3,7 +3,9 @@
 package sandbox
 
 import (
+	"context"
 	"fmt"
+	"os/exec"
 	"path/filepath"
 	"strings"
 )
@@ -13,7 +15,7 @@ func CheckDependence() error {
 	return nil
 }
 
-func seatbeltProfile(home string) string {
+func seatbeltProfile(home, workDir string, opt *Option) string {
 	deniedDirs, deniedFiles := deniedPaths(home)
 
 	var deny strings.Builder
@@ -28,6 +30,24 @@ func seatbeltProfile(home string) string {
 
 	keychainDir := filepath.Join(home, "Library", "Keychains")
 
+	networkRule := "(allow network*)"
+	if opt.Network == NetworkDeny {
+		networkRule = "(deny network*)"
+	}
+
+	writeRoot := home
+	var extraWrites strings.Builder
+	if opt.MinimalBinds != nil {
+		if opt.MinimalBinds.WriteScope == WriteHome {
+			writeRoot = home
+		} else {
+			writeRoot = workDir
+		}
+		for _, p := range opt.MinimalBinds.ReadWrite {
+			fmt.Fprintf(&extraWrites, "(allow file-write* (subpath %q))\n", p)
+		}
+	}
+
 	return fmt.Sprintf(`(version 1)
 (deny default)
 (allow process-exec)
@@ -37,38 +57,52 @@ func seatbeltProfile(home string) string {
 (allow signal)
 (allow ipc-posix*)
 
-;; deny sensitive paths
+;; baseline: read-only filesystem
+(allow file-read*)
+
+;; baseline: writable scope
+(allow file-write*
+    (subpath %q))
 %s
-;; re-allow keychain access (required for keyring/Security framework)
+;; baseline: keychain access (required for keyring/Security framework)
 (allow file-read* (subpath %q))
 (allow file-write* (subpath %q))
 
-;; read-only filesystem
-(allow file-read*)
-
-;; writable only under $HOME
-(allow file-write*
-    (subpath %q))
-
-;; allow /dev access (required for /dev/null, /dev/random, etc.)
+;; baseline: /dev access (required for /dev/null, /dev/random, etc.)
 (allow file-read* (subpath "/dev"))
 (allow file-write* (subpath "/dev"))
 
-;; allow network
-(allow network*)
-`, deny.String(), keychainDir, keychainDir, home)
+;; caller-specified denies (override baselines above)
+%s
+;; network
+%s
+`, writeRoot, extraWrites.String(), keychainDir, keychainDir, deny.String(), networkRule)
 }
 
-func Wrap(binary string, args []string, workDir string) (string, []string, error) {
-	homeDir, err := vaildateDir(workDir)
-	if err != nil {
-		return "", nil, err
+func Wrap(ctx context.Context, binary string, args []string, workDir string, opt *Option) (*exec.Cmd, error) {
+	if ctx == nil {
+		return nil, fmt.Errorf("ctx is nil")
+	}
+	if opt == nil {
+		opt = &Option{}
+	}
+	if opt.CPUPercent < 0 || opt.MemoryMB < 0 {
+		return nil, fmt.Errorf("negative limit: cpu=%d mem=%d", opt.CPUPercent, opt.MemoryMB)
+	}
+	if opt.MemoryMB > 0 {
+		return nil, fmt.Errorf("MemoryMB not supported on darwin: RLIMIT_AS conflicts with Go runtime's virtual address reservation")
 	}
 
-	profile := seatbeltProfile(homeDir)
+	homeDir, absWorkDir, err := validateDir(workDir)
+	if err != nil {
+		return nil, err
+	}
 
+	profile := seatbeltProfile(homeDir, absWorkDir, opt)
 	sbArgs := []string{"-p", profile, binary}
 	sbArgs = append(sbArgs, args...)
 
-	return "sandbox-exec", sbArgs, nil
+	cmd := exec.CommandContext(ctx, "sandbox-exec", sbArgs...)
+	cmd.Dir = absWorkDir
+	return cmd, nil
 }
