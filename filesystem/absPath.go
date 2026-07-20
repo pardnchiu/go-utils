@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
+	"runtime"
 	"strings"
 )
 
@@ -39,6 +41,44 @@ func RealPath(path string) (string, error) {
 		suffix = append([]string{filepath.Base(dir)}, suffix...)
 		dir = filepath.Dir(dir)
 	}
+}
+
+func underPerUserTempRoot(resolved string) bool {
+	var root string
+	switch runtime.GOOS {
+	case "darwin":
+		root = os.TempDir()
+	case "linux":
+		root = os.Getenv("XDG_RUNTIME_DIR")
+	}
+	if root == "" {
+		return false
+	}
+	realRoot, err := RealPath(root)
+	if err != nil {
+		return false
+	}
+	return resolved == realRoot || strings.HasPrefix(resolved, realRoot+string(filepath.Separator))
+}
+
+var wslUserRootRe = regexp.MustCompile(`^/mnt/[a-zA-Z]/Users/[^/]+(/|$)`)
+
+func isWSLProcVersion() bool {
+	raw, err := os.ReadFile("/proc/version")
+	if err != nil {
+		return false
+	}
+	return strings.Contains(strings.ToLower(string(raw)), "microsoft")
+}
+
+func underWSLWindowsUserRoot(resolved string) bool {
+	if runtime.GOOS != "linux" {
+		return false
+	}
+	if os.Getenv("WSL_DISTRO_NAME") == "" && !isWSLProcVersion() {
+		return false
+	}
+	return wslUserRootRe.MatchString(resolved)
 }
 
 func AbsPath(root, path string, opt AbsPathOption) (string, error) {
@@ -78,7 +118,8 @@ func AbsPath(root, path string, opt AbsPathOption) (string, error) {
 			return "", fmt.Errorf("os.UserHomeDir: %w", err)
 		}
 		homePrefix := home + string(filepath.Separator)
-		if resolved != home && !strings.HasPrefix(resolved, homePrefix) {
+		inHome := resolved == home || strings.HasPrefix(resolved, homePrefix)
+		if !inHome && !underPerUserTempRoot(resolved) && !underWSLWindowsUserRoot(resolved) {
 			return "", fmt.Errorf("path outside user home: %s", path)
 		}
 	}
