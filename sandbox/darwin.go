@@ -5,6 +5,7 @@ package sandbox
 import (
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -13,6 +14,29 @@ import (
 // * if in macOS, always be true
 func CheckDependence() error {
 	return nil
+}
+
+func tempRoots() []string {
+	seen := map[string]bool{}
+	var out []string
+	for _, one := range []string{os.TempDir(), "/tmp", "/var/tmp"} {
+		if one == "" {
+			continue
+		}
+		candidates := []string{one}
+		if resolved, err := filepath.EvalSymlinks(one); err == nil {
+			candidates = append(candidates, resolved)
+		}
+		for _, candidate := range candidates {
+			candidate = filepath.Clean(candidate)
+			if candidate == "" || candidate == string(filepath.Separator) || seen[candidate] {
+				continue
+			}
+			seen[candidate] = true
+			out = append(out, candidate)
+		}
+	}
+	return out
 }
 
 func seatbeltProfile(home, workDir string, opt *Option) string {
@@ -33,6 +57,11 @@ func seatbeltProfile(home, workDir string, opt *Option) string {
 	networkRule := "(allow network*)"
 	if opt.Network == NetworkDeny {
 		networkRule = "(deny network*)"
+	}
+
+	var tempWrites strings.Builder
+	for _, one := range tempRoots() {
+		fmt.Fprintf(&tempWrites, "(allow file-write* (subpath %q))\n", one)
 	}
 
 	writeRoot := home
@@ -64,6 +93,8 @@ func seatbeltProfile(home, workDir string, opt *Option) string {
 (allow file-write*
     (subpath %q))
 %s
+;; baseline: system temp directories
+%s
 ;; baseline: keychain access (required for keyring/Security framework)
 (allow file-read* (subpath %q))
 (allow file-write* (subpath %q))
@@ -76,7 +107,7 @@ func seatbeltProfile(home, workDir string, opt *Option) string {
 %s
 ;; network
 %s
-`, writeRoot, extraWrites.String(), keychainDir, keychainDir, deny.String(), networkRule)
+`, writeRoot, extraWrites.String(), tempWrites.String(), keychainDir, keychainDir, deny.String(), networkRule)
 }
 
 func Wrap(ctx context.Context, binary string, args []string, workDir string, opt *Option) (*exec.Cmd, error) {
