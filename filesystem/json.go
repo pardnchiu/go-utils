@@ -4,11 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+
+	"github.com/pardnchiu/go-pkg/utils"
 )
 
 func ReadJSON[T any](path string) (T, error) {
 	var v T
-	bytes, err := os.ReadFile(path)
+	bytes, err := os.ReadFile(utils.AbsPath("", path))
 	if err != nil {
 		return v, fmt.Errorf("os.ReadFile: %w", err)
 	}

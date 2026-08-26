@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/pardnchiu/go-pkg/utils"
 )
 
 func validateDir(path string) (home, workDir string, err error) {
@@ -16,7 +18,7 @@ func validateDir(path string) (home, workDir string, err error) {
 		return "", "", fmt.Errorf("os.UserHomeDir: %w", err)
 	}
 
-	workDir, err = filepath.EvalSymlinks(path)
+	workDir, err = filepath.EvalSymlinks(utils.AbsPath("", path))
 	if err != nil {
 		return "", "", fmt.Errorf("filepath.EvalSymlinks: %w", err)
 	}
@@ -62,12 +64,31 @@ type Option struct {
 	MinimalBinds *BindSpec
 }
 
-func resolveDir(path string) (string, error) {
-	abs, err := filepath.Abs(path)
-	if err != nil {
-		return "", fmt.Errorf("filepath.Abs: %w", err)
+func resolveDir(path string) string {
+	return utils.AbsPath("", path)
+}
+
+func resolveBinds(list []string) []string {
+	out := make([]string, 0, len(list))
+	for _, one := range list {
+		one = strings.TrimSpace(one)
+		if one == "" {
+			continue
+		}
+		if resolved, err := filepath.EvalSymlinks(one); err == nil {
+			out = append(out, resolved)
+			continue
+		}
+		abs := utils.AbsPath("", one)
+		if abs == "" {
+			continue
+		}
+		if resolved, err := filepath.EvalSymlinks(abs); err == nil {
+			abs = resolved
+		}
+		out = append(out, abs)
 	}
-	return abs, nil
+	return out
 }
 
 var minimalRoBinds = []string{
@@ -94,12 +115,23 @@ func New(data []byte) {
 
 func deniedPaths(homeDir string) (dirs []string, files []string) {
 	for _, d := range cachedDenied.Dirs {
-		dirs = append(dirs, filepath.Join(homeDir, d))
+		if one := resolveDenied(homeDir, d); one != "" {
+			dirs = append(dirs, one)
+		}
 	}
 	for _, f := range cachedDenied.Files {
-		files = append(files, filepath.Join(homeDir, f))
+		if one := resolveDenied(homeDir, f); one != "" {
+			files = append(files, one)
+		}
 	}
 	return
+}
+
+func resolveDenied(homeDir, entry string) string {
+	if strings.TrimSpace(entry) == "" {
+		return ""
+	}
+	return utils.AbsPath(homeDir, entry)
 }
 
 func ParseMemory(s string) (int, error) {

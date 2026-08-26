@@ -2,7 +2,8 @@ package reader
 
 import (
 	"os"
-	"path/filepath"
+
+	"github.com/pardnchiu/go-pkg/utils"
 )
 
 type ListOption struct {
@@ -34,13 +35,9 @@ type Line struct {
 }
 
 func newFile(path string, info os.FileInfo) File {
-	abs, err := filepath.Abs(path)
-	if err != nil {
-		abs = path
-	}
 	return File{
 		Name:    info.Name(),
-		Path:    abs,
+		Path:    utils.AbsPath("", path),
 		IsDir:   info.IsDir(),
 		Size:    info.Size(),
 		ModTime: info.ModTime().Format("2006-01-02 15:04"),

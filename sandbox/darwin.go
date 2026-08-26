@@ -72,7 +72,7 @@ func seatbeltProfile(home, workDir string, opt *Option) string {
 		} else {
 			writeRoot = workDir
 		}
-		for _, p := range opt.MinimalBinds.ReadWrite {
+		for _, p := range resolveBinds(opt.MinimalBinds.ReadWrite) {
 			fmt.Fprintf(&extraWrites, "(allow file-write* (subpath %q))\n", p)
 		}
 	}
@@ -125,12 +125,8 @@ func Wrap(ctx context.Context, binary string, args []string, workDir string, opt
 	}
 
 	if opt.AllowAll {
-		absDir, err := resolveDir(workDir)
-		if err != nil {
-			return nil, err
-		}
 		cmd := exec.CommandContext(ctx, binary, args...)
-		cmd.Dir = absDir
+		cmd.Dir = resolveDir(workDir)
 		return cmd, nil
 	}
 

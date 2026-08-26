@@ -5,12 +5,15 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+
+	"github.com/pardnchiu/go-pkg/utils"
 )
 
 func CheckDir(path string, create bool) error {
 	if path == "" {
 		return errors.New("path is empty")
 	}
+	path = utils.AbsPath("", path)
 
 	info, err := os.Stat(path)
 	if err == nil {

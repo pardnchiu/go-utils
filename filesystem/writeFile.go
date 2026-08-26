@@ -4,9 +4,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/pardnchiu/go-pkg/utils"
 )
 
 func WriteFile(path, content string, permission os.FileMode) error {
+	path = utils.AbsPath("", path)
+
 	if IsDenied(path) {
 		return fmt.Errorf("access denied: %s", path)
 	}

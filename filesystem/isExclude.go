@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"github.com/pardnchiu/go-pkg/utils"
 )
 
 type exclude struct {
@@ -16,6 +18,9 @@ type exclude struct {
 var invalidNegateRegex = regexp.MustCompile(`^!{2,}`)
 
 func IsExcluded(workDir, absPath string) bool {
+	workDir = utils.AbsPath("", workDir)
+	absPath = utils.AbsPath(workDir, absPath)
+
 	rel, err := filepath.Rel(workDir, absPath)
 	if err != nil {
 		return false

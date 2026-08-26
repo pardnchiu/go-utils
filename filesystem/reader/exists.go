@@ -6,15 +6,17 @@ import (
 	"io"
 	"io/fs"
 	"os"
+
+	"github.com/pardnchiu/go-pkg/utils"
 )
 
 func Exists(path string) bool {
-	_, err := os.Stat(path)
+	_, err := os.Stat(utils.AbsPath("", path))
 	return err == nil
 }
 
 func IsFile(path string) bool {
-	info, err := os.Stat(path)
+	info, err := os.Stat(utils.AbsPath("", path))
 	if err != nil {
 		return false
 	}
@@ -22,7 +24,7 @@ func IsFile(path string) bool {
 }
 
 func IsDir(path string) bool {
-	info, err := os.Stat(path)
+	info, err := os.Stat(utils.AbsPath("", path))
 	if err != nil {
 		return false
 	}
@@ -30,6 +32,8 @@ func IsDir(path string) bool {
 }
 
 func IsEmpty(path string) (bool, error) {
+	path = utils.AbsPath("", path)
+
 	info, err := os.Stat(path)
 	if err != nil {
 		return false, fmt.Errorf("os.Stat: %w", err)

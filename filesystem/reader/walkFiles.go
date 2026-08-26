@@ -7,18 +7,12 @@ import (
 	"strings"
 
 	"github.com/pardnchiu/go-pkg/filesystem"
+	"github.com/pardnchiu/go-pkg/utils"
 )
 
 func WalkFiles(root string, opts ...ListOption) ([]File, error) {
+	root = utils.AbsPath("", root)
 	opt := getListOption(opts)
-	var absRoot string
-	if opt.SkipExcluded {
-		abs, err := filepath.Abs(root)
-		if err != nil {
-			return nil, fmt.Errorf("filepath.Abs: %w", err)
-		}
-		absRoot = abs
-	}
 
 	var files []File
 	err := filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
@@ -38,28 +32,16 @@ func WalkFiles(root string, opts ...ListOption) ([]File, error) {
 			if opt.SkipDenied && filesystem.IsDenied(path) {
 				return filepath.SkipDir
 			}
-			if opt.SkipExcluded {
-				abs, err := filepath.Abs(path)
-				if err != nil {
-					return fmt.Errorf("filepath.Abs: %w", err)
-				}
-				if filesystem.IsExcluded(absRoot, abs) {
-					return filepath.SkipDir
-				}
+			if opt.SkipExcluded && filesystem.IsExcluded(root, path) {
+				return filepath.SkipDir
 			}
 			return nil
 		}
 		if !opt.IncludeNonRegular && !entry.Type().IsRegular() {
 			return nil
 		}
-		if opt.SkipExcluded {
-			abs, err := filepath.Abs(path)
-			if err != nil {
-				return fmt.Errorf("filepath.Abs: %w", err)
-			}
-			if filesystem.IsExcluded(absRoot, abs) {
-				return nil
-			}
+		if opt.SkipExcluded && filesystem.IsExcluded(root, path) {
+			return nil
 		}
 
 		info, err := entry.Info()

@@ -9,9 +9,13 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/pardnchiu/go-pkg/utils"
 )
 
 func PostgresqlMigrate(ctx context.Context, db *sql.DB, dir string) error {
+	dir = utils.AbsPath("", dir)
+
 	if _, err := db.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS schema_migrations (
 		version     TEXT        PRIMARY KEY,
 		applied_at  TIMESTAMPTZ NOT NULL DEFAULT now()

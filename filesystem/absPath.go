@@ -8,6 +8,8 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+
+	"github.com/pardnchiu/go-pkg/utils"
 )
 
 type AbsPathOption struct {
@@ -16,6 +18,8 @@ type AbsPathOption struct {
 }
 
 func RealPath(path string) (string, error) {
+	path = utils.AbsPath("", path)
+
 	resolved, err := filepath.EvalSymlinks(path)
 	if err == nil {
 		return resolved, nil
@@ -82,30 +86,7 @@ func underWSLWindowsUserRoot(resolved string) bool {
 }
 
 func AbsPath(root, path string, opt AbsPathOption) (string, error) {
-	path = strings.TrimSpace(path)
-
-	switch {
-	case path == "":
-		path = root
-	case path == "~" || strings.HasPrefix(path, "~/"):
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return "", fmt.Errorf("os.UserHomeDir: %w", err)
-		}
-		path = filepath.Join(home, path[1:])
-	case path == "." || strings.HasPrefix(path, "./"):
-		path = filepath.Join(root, strings.TrimPrefix(path, "./"))
-	case !filepath.IsAbs(path):
-		path = filepath.Join(root, path)
-	}
-
-	if !filepath.IsAbs(path) {
-		abs, err := filepath.Abs(path)
-		if err != nil {
-			return "", fmt.Errorf("filepath.Abs: %w", err)
-		}
-		path = abs
-	}
+	path = utils.AbsPath(root, path)
 
 	resolved, err := RealPath(path)
 	if err != nil {

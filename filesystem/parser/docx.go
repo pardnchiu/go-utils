@@ -10,6 +10,8 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+
+	"github.com/pardnchiu/go-pkg/utils"
 )
 
 var docxPartPattern = regexp.MustCompile(`^word/(?:document|header\d+|footer\d+|footnotes|endnotes)\.xml$`)
@@ -34,6 +36,7 @@ func Docx(ctx context.Context, path string) (string, []Chunk, error) {
 	if path == "" {
 		return "", nil, fmt.Errorf("docx: path is required")
 	}
+	path = utils.AbsPath("", path)
 	if err := ctx.Err(); err != nil {
 		return "", nil, err
 	}
