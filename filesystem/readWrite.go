@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/pardnchiu/go-pkg/utils"
 )
 
 func ReadText(path string) (string, error) {
-	bytes, err := os.ReadFile(path)
+	bytes, err := os.ReadFile(utils.AbsPath("", path))
 	if err != nil {
 		return "", fmt.Errorf("os.ReadFile: %w", err)
 	}
@@ -19,6 +21,8 @@ func WriteText(path, content string) error {
 }
 
 func AppendText(path, content string) error {
+	path = utils.AbsPath("", path)
+
 	if IsDenied(path) {
 		return fmt.Errorf("access denied: %s", path)
 	}

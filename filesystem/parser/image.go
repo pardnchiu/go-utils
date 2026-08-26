@@ -6,16 +6,19 @@ import (
 	"encoding/base64"
 	"fmt"
 	"image"
-	"image/jpeg"
 	_ "image/gif"
+	"image/jpeg"
 	_ "image/png"
 	"os"
+
+	"github.com/pardnchiu/go-pkg/utils"
 )
 
 func Image(ctx context.Context, path string) (string, error) {
 	if path == "" {
 		return "", fmt.Errorf("image: path is required")
 	}
+	path = utils.AbsPath("", path)
 	if err := ctx.Err(); err != nil {
 		return "", err
 	}

@@ -6,9 +6,12 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+
+	"github.com/pardnchiu/go-pkg/utils"
 )
 
 func GlobFiles(root, namePattern string) ([]File, error) {
+	root = utils.AbsPath("", root)
 	parts := strings.Split(namePattern, "/")
 
 	for _, p := range parts {
@@ -21,10 +24,6 @@ func GlobFiles(root, namePattern string) ([]File, error) {
 	}
 
 	if slices.Contains(parts, "**") {
-		absRoot, err := filepath.Abs(root)
-		if err != nil {
-			return nil, fmt.Errorf("filepath.Abs: %w", err)
-		}
 		walked, err := WalkFiles(root, ListOption{
 			SkipExcluded:      true,
 			SkipDenied:        true,
@@ -36,7 +35,7 @@ func GlobFiles(root, namePattern string) ([]File, error) {
 		}
 		files := make([]File, 0, len(walked))
 		for _, f := range walked {
-			rel, err := filepath.Rel(absRoot, f.Path)
+			rel, err := filepath.Rel(root, f.Path)
 			if err != nil {
 				continue
 			}

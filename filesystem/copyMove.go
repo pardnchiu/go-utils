@@ -8,9 +8,13 @@ import (
 	"os"
 	"path/filepath"
 	"syscall"
+
+	"github.com/pardnchiu/go-pkg/utils"
 )
 
 func Copy(src, dst string) error {
+	src, dst = utils.AbsPath("", src), utils.AbsPath("", dst)
+
 	if IsDenied(dst) {
 		return fmt.Errorf("access denied: %s", dst)
 	}
@@ -57,6 +61,8 @@ func Copy(src, dst string) error {
 }
 
 func Move(src, dst string) error {
+	src, dst = utils.AbsPath("", src), utils.AbsPath("", dst)
+
 	if IsDenied(dst) {
 		return fmt.Errorf("access denied: %s", dst)
 	}
@@ -86,6 +92,8 @@ func Move(src, dst string) error {
 }
 
 func Remove(path string) error {
+	path = utils.AbsPath("", path)
+
 	if IsDenied(path) {
 		return fmt.Errorf("access denied: %s", path)
 	}

@@ -1,6 +1,10 @@
 package keychain
 
-import "sync"
+import (
+	"sync"
+
+	"github.com/pardnchiu/go-pkg/utils"
+)
 
 var (
 	once         sync.Once
@@ -11,6 +15,6 @@ var (
 func Init(svc, fbPath string) {
 	once.Do(func() {
 		service = svc
-		fallbackPath = fbPath
+		fallbackPath = utils.AbsPath("", fbPath)
 	})
 }

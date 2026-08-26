@@ -91,7 +91,7 @@ func buildBwrapArgs(homeDir, workDir string, opt *Option) []string {
 		for _, p := range minimalRoBinds {
 			args = append(args, "--ro-bind-try", p, p)
 		}
-		for _, p := range opt.MinimalBinds.ReadOnly {
+		for _, p := range resolveBinds(opt.MinimalBinds.ReadOnly) {
 			args = append(args, "--ro-bind-try", p, p)
 		}
 		writeRoot := workDir
@@ -99,7 +99,7 @@ func buildBwrapArgs(homeDir, workDir string, opt *Option) []string {
 			writeRoot = homeDir
 		}
 		args = append(args, "--bind", writeRoot, writeRoot)
-		for _, p := range opt.MinimalBinds.ReadWrite {
+		for _, p := range resolveBinds(opt.MinimalBinds.ReadWrite) {
 			args = append(args, "--bind", p, p)
 		}
 	} else {
@@ -134,7 +134,7 @@ func buildBwrapArgs(homeDir, workDir string, opt *Option) []string {
 		if opt.MinimalBinds.WriteScope == WriteHome {
 			writeRoot = homeDir
 		}
-		roots := append([]string{writeRoot}, opt.MinimalBinds.ReadWrite...)
+		roots := append([]string{writeRoot}, resolveBinds(opt.MinimalBinds.ReadWrite)...)
 		isVisible := func(p string) bool {
 			for _, r := range roots {
 				if p == r || strings.HasPrefix(p, r+"/") {
@@ -177,10 +177,7 @@ func Wrap(ctx context.Context, binary string, args []string, workDir string, opt
 	}
 
 	if opt.AllowAll {
-		absDir, err := resolveDir(workDir)
-		if err != nil {
-			return nil, err
-		}
+		absDir := resolveDir(workDir)
 		if opt.CPUPercent > 0 || opt.MemoryMB > 0 {
 			if !checkBinary("systemd-run") {
 				return nil, fmt.Errorf("systemd-run required for CPU/Memory limits (needs a running user systemd session)")

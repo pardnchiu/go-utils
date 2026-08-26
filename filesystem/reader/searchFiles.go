@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/pardnchiu/go-pkg/filesystem"
+	"github.com/pardnchiu/go-pkg/utils"
 )
 
 var binaryExts = map[string]bool{
@@ -23,6 +24,8 @@ var binaryExts = map[string]bool{
 }
 
 func SearchFiles(root, namePattern string, filePatterns []string, maxSize int64, opts ...ListOption) ([]File, error) {
+	root = utils.AbsPath("", root)
+
 	regex, err := regexp.Compile(namePattern)
 	if err != nil {
 		return nil, fmt.Errorf("regexp.Compile: %w", err)
@@ -33,14 +36,6 @@ func SearchFiles(root, namePattern string, filePatterns []string, maxSize int64,
 	}
 
 	opt := getListOption(opts)
-	var absRoot string
-	if opt.SkipExcluded {
-		abs, err := filepath.Abs(root)
-		if err != nil {
-			return nil, fmt.Errorf("filepath.Abs: %w", err)
-		}
-		absRoot = abs
-	}
 
 	var results []File
 	err = filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
@@ -67,14 +62,8 @@ func SearchFiles(root, namePattern string, filePatterns []string, maxSize int64,
 			if opt.SkipDenied && filesystem.IsDenied(path) {
 				return filepath.SkipDir
 			}
-			if opt.SkipExcluded {
-				abs, err := filepath.Abs(path)
-				if err != nil {
-					return fmt.Errorf("filepath.Abs: %w", err)
-				}
-				if filesystem.IsExcluded(absRoot, abs) {
-					return filepath.SkipDir
-				}
+			if opt.SkipExcluded && filesystem.IsExcluded(root, path) {
+				return filepath.SkipDir
 			}
 			return nil
 		}
@@ -83,14 +72,8 @@ func SearchFiles(root, namePattern string, filePatterns []string, maxSize int64,
 			return nil
 		}
 
-		if opt.SkipExcluded {
-			abs, err := filepath.Abs(path)
-			if err != nil {
-				return fmt.Errorf("filepath.Abs: %w", err)
-			}
-			if filesystem.IsExcluded(absRoot, abs) {
-				return nil
-			}
+		if opt.SkipExcluded && filesystem.IsExcluded(root, path) {
+			return nil
 		}
 
 		relPath, err := filepath.Rel(root, path)

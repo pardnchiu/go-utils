@@ -11,6 +11,8 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+
+	"github.com/pardnchiu/go-pkg/utils"
 )
 
 var pptxRegex = regexp.MustCompile(`^ppt/slides/slide(\d+)\.xml$`)
@@ -19,6 +21,7 @@ func PPTX(ctx context.Context, path string) (string, []Chunk, error) {
 	if path == "" {
 		return "", nil, fmt.Errorf("pptx: path is required")
 	}
+	path = utils.AbsPath("", path)
 	if err := ctx.Err(); err != nil {
 		return "", nil, err
 	}

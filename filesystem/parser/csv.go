@@ -11,6 +11,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/pardnchiu/go-pkg/utils"
 )
 
 const csvMaxReadSize = 1 << 20
@@ -19,6 +21,7 @@ func CSV(ctx context.Context, path string, offset, limit int) (string, error) {
 	if path == "" {
 		return "", fmt.Errorf("csv: path is required")
 	}
+	path = utils.AbsPath("", path)
 	if err := ctx.Err(); err != nil {
 		return "", err
 	}

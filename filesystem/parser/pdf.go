@@ -6,12 +6,15 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
+
+	"github.com/pardnchiu/go-pkg/utils"
 )
 
 func PDF(ctx context.Context, path string) (string, []Chunk, error) {
 	if path == "" {
 		return "", nil, fmt.Errorf("pdf: path is required")
 	}
+	path = utils.AbsPath("", path)
 	if err := ctx.Err(); err != nil {
 		return "", nil, err
 	}

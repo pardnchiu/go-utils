@@ -11,6 +11,8 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+
+	"github.com/pardnchiu/go-pkg/utils"
 )
 
 var xlsxSheetRegex = regexp.MustCompile(`^xl/worksheets/sheet(\d+)\.xml$`)
@@ -29,6 +31,7 @@ func XLSX(ctx context.Context, path string, offset, limit int) (string, error) {
 	if path == "" {
 		return "", fmt.Errorf("xlsx: path is required")
 	}
+	path = utils.AbsPath("", path)
 	if err := ctx.Err(); err != nil {
 		return "", err
 	}
