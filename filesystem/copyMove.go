@@ -37,24 +37,26 @@ func Copy(src, dst string) error {
 		return fmt.Errorf("os.MkdirAll: %w", err)
 	}
 
-	tmp := dst + ".tmp"
-	out, err := os.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, srcInfo.Mode().Perm())
+	out, err := os.CreateTemp(filepath.Dir(dst), "."+filepath.Base(dst)+".tmp-*")
 	if err != nil {
-		return fmt.Errorf("os.OpenFile: %w", err)
+		return fmt.Errorf("os.CreateTemp: %w", err)
 	}
+	tmp := out.Name()
+	defer os.Remove(tmp)
 
+	if err := out.Chmod(srcInfo.Mode().Perm()); err != nil {
+		out.Close()
+		return fmt.Errorf("os.Chmod: %w", err)
+	}
 	if _, err := io.Copy(out, in); err != nil {
 		out.Close()
-		os.Remove(tmp)
 		return fmt.Errorf("io.Copy: %w", err)
 	}
 	if err := out.Close(); err != nil {
-		os.Remove(tmp)
 		return fmt.Errorf("Close: %w", err)
 	}
 
 	if err := os.Rename(tmp, dst); err != nil {
-		os.Remove(tmp)
 		return fmt.Errorf("os.Rename: %w", err)
 	}
 	return nil
