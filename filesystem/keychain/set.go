@@ -1,6 +1,7 @@
 package keychain
 
 import (
+	"context"
 	"fmt"
 	"os/exec"
 	"path/filepath"
@@ -41,12 +42,20 @@ func setSecretOnMac(key, value string) error {
 }
 
 func setSecret(key, value string) error {
-	cmd := exec.Command("secret-tool", "store",
+	ctx, cancel := context.WithTimeout(context.Background(), secretToolTimeout)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "secret-tool", "store",
 		"--label", service+"/"+key,
 		"service", service, "account", key)
 	cmd.Stdin = strings.NewReader(value)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("secret-tool store: %s", out)
+	cmd.WaitDelay = secretToolWaitDelay
+	out, err := cmd.CombinedOutput()
+	if ctx.Err() != nil {
+		return fmt.Errorf("secret-tool store: %w", ctx.Err())
+	}
+	if err != nil {
+		return fmt.Errorf("secret-tool store: %w: %s", err, strings.TrimSpace(string(out)))
 	}
 	return nil
 }

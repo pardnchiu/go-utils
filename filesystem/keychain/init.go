@@ -2,8 +2,14 @@ package keychain
 
 import (
 	"sync"
+	"time"
 
 	"github.com/pardnchiu/go-pkg/utils"
+)
+
+const (
+	secretToolTimeout   = 5 * time.Second
+	secretToolWaitDelay = 1 * time.Second
 )
 
 var (
