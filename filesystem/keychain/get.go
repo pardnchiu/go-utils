@@ -1,6 +1,7 @@
 package keychain
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -39,8 +40,13 @@ func getSecretFromMac(key string) string {
 }
 
 func getSecret(key string) string {
-	out, err := exec.Command("secret-tool", "lookup",
-		"service", service, "account", key).Output()
+	ctx, cancel := context.WithTimeout(context.Background(), secretToolTimeout)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "secret-tool", "lookup",
+		"service", service, "account", key)
+	cmd.WaitDelay = secretToolWaitDelay
+	out, err := cmd.Output()
 	if err != nil {
 		return ""
 	}

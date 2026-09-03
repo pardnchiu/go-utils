@@ -1,6 +1,7 @@
 package keychain
 
 import (
+	"context"
 	"os/exec"
 	"path/filepath"
 	"runtime"
@@ -16,8 +17,12 @@ func Delete(key string) error {
 			"-s", service,
 			"-a", key).Run()
 	default:
-		exec.Command("secret-tool", "clear",
-			"service", service, "account", key).Run()
+		ctx, cancel := context.WithTimeout(context.Background(), secretToolTimeout)
+		cmd := exec.CommandContext(ctx, "secret-tool", "clear",
+			"service", service, "account", key)
+		cmd.WaitDelay = secretToolWaitDelay
+		cmd.Run()
+		cancel()
 		deleteFallback(key)
 	}
 	return nil
